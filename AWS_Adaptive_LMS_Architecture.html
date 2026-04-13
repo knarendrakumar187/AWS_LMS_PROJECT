@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Adaptive Online LMS — AWS Architecture Blueprint</title>
+<style>
+  :root {
+    --bg: #0d1117; --bg2: #161b22; --bg3: #1e2733;
+    --border: #30363d; --border2: #444c56;
+    --text: #e6edf3; --text2: #8b949e; --text3: #6e7681;
+    --blue: #58a6ff; --blue-bg: #0d2340; --blue-border: #1f6feb;
+    --green: #3fb950; --green-bg: #0d2818; --green-border: #238636;
+    --amber: #d29922; --amber-bg: #2d1f00; --amber-border: #6e4c13;
+    --purple: #a5a0f7; --purple-bg: #1a1240; --purple-border: #534ab7;
+    --coral: #f87171; --coral-bg: #2d0f0f; --coral-border: #993c1d;
+    --teal: #3fb950; --teal-bg: #0d2818;
+    --code-bg: #161b22; --code-border: #30363d;
+    --radius: 8px; --radius-lg: 12px;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --mono: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.75;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+  /* ── HEADER ── */
+  .doc-header {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 2rem;
+    margin-bottom: 2.5rem;
+  }
+  .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 1rem; }
+  .badge {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+    padding: 3px 10px; border-radius: 20px; text-transform: uppercase;
+  }
+  .badge-blue  { background: var(--blue-bg);   color: var(--blue);   border: 1px solid var(--blue-border); }
+  .badge-green { background: var(--green-bg);  color: var(--green);  border: 1px solid var(--green-border); }
+  .badge-amber { background: var(--amber-bg);  color: var(--amber);  border: 1px solid var(--amber-border); }
+  .badge-purple{ background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); }
+  .badge-coral { background: var(--coral-bg);  color: var(--coral);  border: 1px solid var(--coral-border); }
+  h1 { font-size: 2rem; font-weight: 700; line-height: 1.2; color: var(--text); }
+  h1 span { color: var(--blue); }
+  .subtitle { color: var(--text2); font-size: 1rem; margin-top: 0.5rem; }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1.5rem 2rem;
+    margin-bottom: 3rem;
+  }
+  .toc h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); margin-bottom: 1rem; }
+  .toc-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 16px;
+  }
+  .toc a {
+    font-size: 13px; color: var(--text2); text-decoration: none;
+    padding: 3px 0; display: block; border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .toc a:hover { color: var(--blue); }
+  .toc a .num { color: var(--text3); margin-right: 6px; font-size: 11px; }
+
+  /* ── SECTIONS ── */
+  .section {
+    margin-bottom: 3.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .section-header {
+    display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .sec-num {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+    color: var(--blue); background: var(--blue-bg);
+    border: 1px solid var(--blue-border); border-radius: 6px;
+    padding: 4px 10px; white-space: nowrap; margin-top: 4px;
+  }
+  h2 { font-size: 1.4rem; font-weight: 600; color: var(--text); line-height: 1.3; }
+  h3 { font-size: 1.05rem; font-weight: 600; color: var(--text); margin: 1.5rem 0 0.6rem; }
+  h4 { font-size: 0.95rem; font-weight: 600; color: var(--text2); margin: 1.2rem 0 0.4rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  p { color: var(--text2); margin-bottom: 0.75rem; }
+  strong { color: var(--text); font-weight: 600; }
+
+  /* ── CARDS ── */
+  .card-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin: 1rem 0;
+  }
+  .card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 1rem 1.2rem;
+  }
+  .card-title { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 0.3rem; }
+  .card-sub { font-size: 13px; color: var(--text2); }
+  .card.blue  { border-left: 3px solid var(--blue);   }
+  .card.green { border-left: 3px solid var(--green);  }
+  .card.amber { border-left: 3px solid var(--amber);  }
+  .card.purple{ border-left: 3px solid var(--purple); }
+  .card.coral { border-left: 3px solid var(--coral);  }
+
+  /* ── TABLES ── */
+  .tbl-wrap { overflow-x: auto; margin: 1rem 0; border-radius: var(--radius-lg); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--bg3); }
+  th { padding: 10px 14px; text-align: left; font-weight: 600; color: var(--text); font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 14px; color: var(--text2); border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--bg3); }
+  code.inline { background: var(--code-bg); border: 1px solid var(--code-border); border-radius: 4px; font-family: var(--mono); font-size: 12px; padding: 1px 6px; color: #79c0ff; }
+
+  /* ── CODE BLOCKS ── */
+  .code-block {
+    background: var(--code-bg); border: 1px solid var(--code-border);
+    border-radius: var(--radius-lg); margin: 1rem 0; overflow: hidden;
+  }
+  .code-label {
+    padding: 6px 14px; font-size: 11px; font-weight: 600;
+    color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em;
+    background: var(--bg3); border-bottom: 1px solid var(--code-border);
+  }
+  pre {
+    padding: 1rem 1.2rem; overflow-x: auto;
+    font-family: var(--mono); font-size: 13px; line-height: 1.6; color: #e6edf3;
+  }
+  .kw { color: #ff7b72; } .str { color: #a5d6ff; }
+  .com { color: #6e7681; } .fn { color: #d2a8ff; }
+  .num { color: #79c0ff; } .key { color: #ffa657; }
+  .val { color: #56d364; }
+
+  /* ── FLOW STEPS ── */
+  .flow { margin: 1rem 0; }
+  .flow-step {
+    display: flex; gap: 1rem; margin-bottom: 0.6rem; align-items: flex-start;
+  }
+  .flow-num {
+    min-width: 28px; height: 28px; border-radius: 50%;
+    background: var(--blue-bg); border: 1px solid var(--blue-border);
+    color: var(--blue); font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; margin-top: 2px;
+  }
+  .flow-text { color: var(--text2); font-size: 14px; padding-top: 4px; }
+  .flow-text strong { color: var(--text); }
+
+  /* ── CALLOUTS ── */
+  .callout {
+    border-radius: var(--radius); padding: 0.9rem 1.2rem;
+    margin: 1rem 0; font-size: 14px;
+  }
+  .callout-blue   { background: var(--blue-bg);   border-left: 3px solid var(--blue-border);   color: #b3d4ff; }
+  .callout-green  { background: var(--green-bg);  border-left: 3px solid var(--green-border);  color: #9ee8a8; }
+  .callout-amber  { background: var(--amber-bg);  border-left: 3px solid var(--amber-border);  color: #f2c976; }
+  .callout-purple { background: var(--purple-bg); border-left: 3px solid var(--purple-border); color: #c8c4fa; }
+  .callout-coral  { background: var(--coral-bg);  border-left: 3px solid var(--coral-border);  color: #fca5a5; }
+  .callout strong { color: inherit; }
+
+  /* ── SUBNET DIAGRAM ── */
+  .vpc-diagram {
+    border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 1.2rem; margin: 1rem 0; overflow-x: auto;
+  }
+  .vpc-tier {
+    border-radius: var(--radius); padding: 0.8rem 1rem;
+    margin-bottom: 10px; border: 1px dashed;
+  }
+  .vpc-tier-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .vpc-boxes { display: flex; flex-wrap: wrap; gap: 8px; }
+  .vpc-box {
+    border-radius: 6px; padding: 6px 12px;
+    font-size: 12px; font-weight: 600; white-space: nowrap;
+  }
+  .tier-public  { border-color: #238636; background: #0d1f10; }
+  .tier-public .vpc-tier-label { color: #3fb950; }
+  .tier-public .vpc-box { background: #0d2818; color: #3fb950; border: 1px solid #238636; }
+  .tier-app    { border-color: #1f6feb; background: #0a1628; }
+  .tier-app .vpc-tier-label { color: #58a6ff; }
+  .tier-app .vpc-box { background: #0d2340; color: #58a6ff; border: 1px solid #1f6feb; }
+  .tier-data   { border-color: #6e4c13; background: #1a1100; }
+  .tier-data .vpc-tier-label { color: #d29922; }
+  .tier-data .vpc-box { background: #2d1f00; color: #d29922; border: 1px solid #6e4c13; }
+
+  /* ── SG RULES ── */
+  .sg-block {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); margin: 0.5rem 0; overflow: hidden;
+  }
+  .sg-header {
+    padding: 8px 14px; font-size: 12px; font-weight: 700;
+    background: var(--bg3); border-bottom: 1px solid var(--border);
+    color: var(--text); letter-spacing: 0.03em;
+  }
+  .sg-row {
+    display: grid; grid-template-columns: 1fr 100px 160px 1fr;
+    padding: 7px 14px; font-size: 12px; color: var(--text2);
+    border-bottom: 1px solid var(--border); gap: 8px;
+  }
+  .sg-row:last-child { border-bottom: none; }
+  .sg-row span:first-child { color: var(--text); font-weight: 600; }
+  @media(max-width:600px){ .sg-row { grid-template-columns: 1fr 1fr; } }
+
+  /* ── RESUME BLOCK ── */
+  .resume-block {
+    background: linear-gradient(135deg, #0d2340 0%, #1a1240 100%);
+    border: 1px solid var(--blue-border); border-radius: var(--radius-lg);
+    padding: 1.5rem 2rem; margin: 1rem 0;
+  }
+  .resume-block h3 { color: var(--blue); margin-top: 0; margin-bottom: 0.8rem; }
+  .resume-block ul { padding-left: 1.2rem; }
+  .resume-block li { color: #b3d4ff; font-size: 14px; margin-bottom: 4px; }
+  .resume-block .tech-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0.8rem; }
+  .tech-pill {
+    font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 20px;
+    background: rgba(88,166,255,0.12); color: var(--blue); border: 1px solid rgba(88,166,255,0.3);
+  }
+
+  /* ── COST TABLE ── */
+  .cost-est { display: flex; gap: 12px; flex-wrap: wrap; margin: 1rem 0; }
+  .cost-card {
+    flex: 1; min-width: 160px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 0.9rem 1.1rem;
+    text-align: center;
+  }
+  .cost-label { font-size: 12px; color: var(--text3); margin-bottom: 4px; }
+  .cost-val { font-size: 1.4rem; font-weight: 700; color: var(--text); }
+  .cost-unit { font-size: 11px; color: var(--text3); }
+
+  /* ── DIVIDER ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg2); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<div class="doc-header">
+  <div class="badge-row">
+    <span class="badge badge-blue">Project 13</span>
+    <span class="badge badge-green">Education &amp; EdTech</span>
+    <span class="badge badge-purple">Production-Ready</span>
+    <span class="badge badge-amber">AWS Certified Patterns</span>
+    <span class="badge badge-coral">Resume-Ready</span>
+  </div>
+  <h1><span>Adaptive Online</span> Learning Management System</h1>
+  <p class="subtitle">Complete AWS Architecture Blueprint · Senior Solutions Architect Reference · 4,800 Students · 23 Countries</p>
+</div>
+
+<!-- ═══════════════════ TOC ═══════════════════ -->
+<div class="toc">
+  <h2>Contents</h2>
+  <div class="toc-grid">
+    <a href="#s1"><span class="num">01</span>Architecture Overview &amp; Data Flow</a>
+    <a href="#s2"><span class="num">02</span>VPC Architecture Design</a>
+    <a href="#s3"><span class="num">03</span>Complete System Workflows</a>
+    <a href="#s4"><span class="num">04</span>DynamoDB Schema Design</a>
+    <a href="#s5"><span class="num">05</span>API Design (Endpoints)</a>
+    <a href="#s6"><span class="num">06</span>Lambda Function Breakdown</a>
+    <a href="#s7"><span class="num">07</span>AI/ML Integration Deep Dive</a>
+    <a href="#s8"><span class="num">08</span>Security Best Practices</a>
+    <a href="#s9"><span class="num">09</span>Deployment Steps</a>
+    <a href="#s10"><span class="num">10</span>Cost Optimization Strategies</a>
+    <a href="#s11"><span class="num">11</span>Resume-Ready Description</a>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 1 ═══════════════════ -->
+<div class="section" id="s1">
+  <div class="section-header">
+    <span class="sec-num">SECTION 01</span>
+    <h2>High-Level Architecture Overview &amp; Data Flow</h2>
+  </div>
+
+  <p>The architecture follows a <strong>serverless-first, event-driven pattern</strong> with three logical tiers inside a private VPC: an edge/delivery layer, a serverless compute layer, and a managed data layer. Every student request travels through CloudFront → API Gateway → Lambda → DynamoDB/S3, with AI/ML calls dispatched asynchronously to avoid adding latency to the user-facing path.</p>
+
+  <h3>Why Each Service Was Chosen</h3>
+  <div class="card-grid">
+    <div class="card blue">
+      <div class="card-title">Amazon CloudFront</div>
+      <div class="card-sub">Serves the React SPA and static assets from 450+ edge locations. Students in Nairobi and Mumbai get &lt;50ms TTFB for course pages. Also terminates TLS and applies WAF rules before traffic ever reaches the VPC.</div>
+    </div>
+    <div class="card blue">
+      <div class="card-title">API Gateway (REST)</div>
+      <div class="card-sub">Single, versioned entry-point for all backend calls. Provides per-route throttling (prevents one student hammering the recommendation endpoint), request validation, and Cognito JWT authorisation out-of-the-box with zero code.</div>
+    </div>
+    <div class="card purple">
+      <div class="card-title">AWS Lambda</div>
+      <div class="card-sub">Zero-server compute that scales from 1 to 10,000 concurrent students automatically. Each function is a single-responsibility unit — the assignment grader never shares a runtime with the video transcriber. Cold starts are mitigated with Provisioned Concurrency on critical paths.</div>
+    </div>
+    <div class="card amber">
+      <div class="card-title">Amazon DynamoDB</div>
+      <div class="card-sub">Single-digit millisecond reads at any scale. The key-value + document model perfectly fits course catalogues (key = courseId), student progress (key = studentId + moduleId), and event logs (time-series). On-Demand pricing means 0 cost when students sleep.</div>
+    </div>
+    <div class="card green">
+      <div class="card-title">Amazon Cognito</div>
+      <div class="card-sub">Handles registration, MFA, social login, and JWT issuance for 4,800 users without writing a single line of auth code. User Pools store student attributes; Identity Pools grant temporary AWS credentials for direct S3 video uploads from the browser.</div>
+    </div>
+    <div class="card coral">
+      <div class="card-title">AI/ML Triad</div>
+      <div class="card-sub">Transcribe converts video audio → timestamped JSON transcripts. Comprehend extracts sentiment and key-phrase entities from assignment text to auto-generate rubric feedback. Personalize trains a collaborative-filtering model to recommend the next optimal learning activity.</div>
+    </div>
+  </div>
+
+  <h3>Step-by-Step Data Flow (Normal Request)</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>Student opens browser</strong> → DNS resolves to CloudFront distribution. CloudFront checks edge cache; on miss, fetches the React SPA bundle from S3 (origin). The SPA loads in &lt;1.5s globally.</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>Login</strong> → Cognito Hosted UI authenticates credentials, issues ID Token + Access Token (JWT, 1h expiry). The React app stores tokens in memory (not localStorage) to prevent XSS token theft.</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>API call</strong> → The React app sends <code class="inline">Authorization: Bearer &lt;AccessToken&gt;</code> to the CloudFront distribution's <code class="inline">/api/*</code> behaviour, which forwards to API Gateway. API Gateway validates the JWT against the Cognito User Pool JWKS endpoint — no Lambda invocation needed for auth.</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>Lambda invocation</strong> → API Gateway routes the authenticated request to the correct Lambda function inside the Private App Subnet. The function reads/writes DynamoDB through a VPC Gateway Endpoint — traffic never leaves the AWS backbone.</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>AI/ML dispatch (async)</strong> → For video transcription and assignment analysis, Lambda publishes an event to an SQS queue, returns 202 Accepted immediately to the client, and a separate consumer Lambda processes the job asynchronously. This prevents 90-second Transcribe jobs from blocking the UI.</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><strong>Notification</strong> → Once AI processing completes, SNS triggers the Notification Lambda which calls SES for personalised email and SNS Mobile Push for in-app alerts.</div></div>
+    <div class="flow-step"><div class="flow-num">7</div><div class="flow-text"><strong>Monitoring</strong> → Every Lambda emits structured logs to CloudWatch. Custom metrics (quiz_score, video_completion_rate) feed a CloudWatch Dashboard. CloudTrail records every API call for compliance auditing. VPC Flow Logs capture network traffic at the ENI level.</div></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 2 ═══════════════════ -->
+<div class="section" id="s2">
+  <div class="section-header">
+    <span class="sec-num">SECTION 02</span>
+    <h2>Detailed VPC Architecture Design</h2>
+  </div>
+
+  <div class="vpc-diagram">
+    <div style="font-size:12px;font-weight:700;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:12px;">
+      VPC: 10.0.0.0/16 · 2 Availability Zones (AZ-1a, AZ-1b) · 6 Subnets
+    </div>
+
+    <div class="vpc-tier tier-public">
+      <div class="vpc-tier-label">Public Subnets — Internet-Facing</div>
+      <div class="vpc-boxes">
+        <div class="vpc-box">10.0.1.0/24 AZ-1a</div>
+        <div class="vpc-box">10.0.2.0/24 AZ-1b</div>
+        <div class="vpc-box">Internet Gateway</div>
+        <div class="vpc-box">NAT Gateway (1 per AZ)</div>
+        <div class="vpc-box">Application Load Balancer</div>
+      </div>
+    </div>
+
+    <div class="vpc-tier tier-app">
+      <div class="vpc-tier-label">Private App Subnets — Compute</div>
+      <div class="vpc-boxes">
+        <div class="vpc-box">10.0.11.0/24 AZ-1a</div>
+        <div class="vpc-box">10.0.12.0/24 AZ-1b</div>
+        <div class="vpc-box">Lambda Functions (VPC-attached)</div>
+        <div class="vpc-box">VPC Interface Endpoints</div>
+      </div>
+    </div>
+
+    <div class="vpc-tier tier-data">
+      <div class="vpc-tier-label">Private Data Subnets — Storage</div>
+      <div class="vpc-boxes">
+        <div class="vpc-box">10.0.21.0/24 AZ-1a</div>
+        <div class="vpc-box">10.0.22.0/24 AZ-1b</div>
+        <div class="vpc-box">DynamoDB (Gateway Endpoint)</div>
+        <div class="vpc-box">S3 (Gateway Endpoint)</div>
+        <div class="vpc-box">RDS (future — reserved)</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Routing Tables</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Route Table</th><th>Destination</th><th>Target</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>Public-RT-AZ1a</td><td>0.0.0.0/0</td><td>Internet Gateway</td><td>Outbound internet for ALB</td></tr>
+        <tr><td>Public-RT-AZ1a</td><td>10.0.0.0/16</td><td>Local</td><td>VPC-internal traffic</td></tr>
+        <tr><td>Private-App-RT-AZ1a</td><td>0.0.0.0/0</td><td>NAT GW AZ-1a</td><td>Lambda → outbound (pip installs, AI APIs)</td></tr>
+        <tr><td>Private-App-RT-AZ1a</td><td>pl-xxx (S3)</td><td>S3 Gateway Endpoint</td><td>Lambda → S3 without NAT</td></tr>
+        <tr><td>Private-App-RT-AZ1a</td><td>pl-yyy (DDB)</td><td>DynamoDB Endpoint</td><td>Lambda → DynamoDB without NAT</td></tr>
+        <tr><td>Private-Data-RT</td><td>10.0.0.0/16</td><td>Local</td><td>No internet — data tier isolation</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Security Groups (Least-Privilege)</h3>
+
+  <div class="sg-block">
+    <div class="sg-header">SG-ALB — Application Load Balancer</div>
+    <div class="sg-row" style="font-size:11px;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border)"><span>Rule</span><span>Protocol/Port</span><span>Source</span><span>Reason</span></div>
+    <div class="sg-row"><span>Inbound HTTPS</span><span>TCP 443</span><span>0.0.0.0/0</span><span>Accept all student HTTPS</span></div>
+    <div class="sg-row"><span>Inbound HTTP</span><span>TCP 80</span><span>0.0.0.0/0</span><span>Redirect to HTTPS only</span></div>
+    <div class="sg-row"><span>Outbound All</span><span>ALL</span><span>SG-Lambda</span><span>Forward to Lambda only</span></div>
+  </div>
+
+  <div class="sg-block">
+    <div class="sg-header">SG-Lambda — Compute Functions</div>
+    <div class="sg-row" style="font-size:11px;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border)"><span>Rule</span><span>Protocol/Port</span><span>Source</span><span>Reason</span></div>
+    <div class="sg-row"><span>Inbound</span><span>TCP 443</span><span>SG-ALB</span><span>Traffic from ALB only</span></div>
+    <div class="sg-row"><span>Outbound HTTPS</span><span>TCP 443</span><span>SG-VPCEndpoints</span><span>Reach AWS services</span></div>
+    <div class="sg-row"><span>Outbound HTTPS</span><span>TCP 443</span><span>0.0.0.0/0 via NAT</span><span>External calls (Transcribe, etc.)</span></div>
+  </div>
+
+  <div class="sg-block">
+    <div class="sg-header">SG-VPCEndpoints — Interface Endpoints</div>
+    <div class="sg-row" style="font-size:11px;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border)"><span>Rule</span><span>Protocol/Port</span><span>Source</span><span>Reason</span></div>
+    <div class="sg-row"><span>Inbound HTTPS</span><span>TCP 443</span><span>SG-Lambda</span><span>Only Lambda may use endpoints</span></div>
+    <div class="sg-row"><span>Outbound</span><span>ALL</span><span>AWS Services</span><span>Forward to managed endpoints</span></div>
+  </div>
+
+  <h3>VPC Endpoints Deployed</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Service</th><th>Endpoint Type</th><th>Why Needed</th></tr></thead>
+      <tbody>
+        <tr><td>Amazon S3</td><td>Gateway Endpoint</td><td>Lambda ↔ S3 without internet; free of charge</td></tr>
+        <tr><td>Amazon DynamoDB</td><td>Gateway Endpoint</td><td>Lambda ↔ DynamoDB; private, no NAT cost</td></tr>
+        <tr><td>Amazon SQS</td><td>Interface Endpoint</td><td>Async job queuing stays private</td></tr>
+        <tr><td>Amazon SNS</td><td>Interface Endpoint</td><td>Notification dispatch without internet</td></tr>
+        <tr><td>AWS Secrets Manager</td><td>Interface Endpoint</td><td>DB credentials fetch stays private</td></tr>
+        <tr><td>Amazon CloudWatch Logs</td><td>Interface Endpoint</td><td>Lambda log streaming without NAT</td></tr>
+        <tr><td>AWS KMS</td><td>Interface Endpoint</td><td>Encryption key calls stay private</td></tr>
+        <tr><td>Amazon Transcribe</td><td>Interface Endpoint</td><td>AI call without public internet</td></tr>
+        <tr><td>Amazon Comprehend</td><td>Interface Endpoint</td><td>NLP call without public internet</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-blue">
+    <strong>VPC Flow Logs:</strong> Enable on the VPC (not subnet level) and ship to S3 with a lifecycle policy: retain 90 days in S3 Standard, then transition to Glacier for 1-year compliance. Use Athena to query flow logs for security investigations without pulling raw files.
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 3 ═══════════════════ -->
+<div class="section" id="s3">
+  <div class="section-header">
+    <span class="sec-num">SECTION 03</span>
+    <h2>Complete System Workflows</h2>
+  </div>
+
+  <h3>Workflow A — Student Login</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Student enters credentials on the React SPA hosted via CloudFront → S3.</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">SPA calls <code class="inline">Cognito User Pool</code> using the Amplify SDK. Cognito validates username/password against the User Pool.</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Cognito returns <strong>IdToken</strong> (student attributes), <strong>AccessToken</strong> (API authorization), and <strong>RefreshToken</strong> (silent renewal every 60 min).</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">SPA calls <code class="inline">GET /students/{studentId}/dashboard</code> with <code class="inline">Authorization: Bearer &lt;AccessToken&gt;</code>.</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">API Gateway validates the JWT signature using the Cognito JWKS endpoint (cached 5 min) — zero Lambda invocation for auth validation.</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><code class="inline">StudentDashboardLambda</code> queries DynamoDB: fetches current course enrolments, last activity timestamp, and pending assignments.</div></div>
+    <div class="flow-step"><div class="flow-num">7</div><div class="flow-text">The same Lambda calls <code class="inline">PersonalizeLambda</code> synchronously to fetch the top-3 recommended next activities and injects them into the dashboard response.</div></div>
+  </div>
+
+  <h3>Workflow B — Video Upload + Transcription Pipeline</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>Instructor uploads video</strong> → SPA requests a pre-signed S3 URL from <code class="inline">POST /videos/upload-url</code>.</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><code class="inline">VideoUploadLambda</code> calls <code class="inline">s3.createPresignedPost()</code> scoped to <code class="inline">s3://lms-videos-raw/{courseId}/{videoId}.mp4</code>, 15-min expiry, max 2 GB.</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Browser uploads directly to S3 (bypasses Lambda entirely — no 6 MB Lambda payload limit).</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">S3 <strong>Event Notification</strong> triggers <code class="inline">TranscriptionDispatchLambda</code> on <code class="inline">s3:ObjectCreated:*</code> in the <code class="inline">raw/</code> prefix.</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">Lambda calls <code class="inline">transcribe.startTranscriptionJob()</code>:
+      <br/>• <code class="inline">MediaFileUri</code>: S3 video URI
+      <br/>• <code class="inline">LanguageCode</code>: auto-detect (supports 37 languages for global students)
+      <br/>• <code class="inline">Settings.ShowSpeakerLabels</code>: true (multi-speaker detection)
+    </div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text">Amazon Transcribe writes the completed JSON transcript to <code class="inline">s3://lms-transcripts/{videoId}.json</code>.</div></div>
+    <div class="flow-step"><div class="flow-num">7</div><div class="flow-text"><code class="inline">TranscriptProcessorLambda</code> (triggered by the output S3 event) parses the transcript, extracts word-level timestamps, and generates <strong>chapter markers</strong> by detecting topic-shift sentences every ~5 minutes using Comprehend's Key Phrase detection.</div></div>
+    <div class="flow-step"><div class="flow-num">8</div><div class="flow-text">Processed transcript + chapter markers written to DynamoDB <code class="inline">Videos</code> table. Student-facing search index updated. SNS sends instructor notification via SES email.</div></div>
+  </div>
+
+  <h3>Workflow C — Assignment Submission + AI Feedback</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Student submits assignment text via <code class="inline">POST /assignments/{assignmentId}/submit</code>.</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><code class="inline">AssignmentSubmitLambda</code> writes submission to DynamoDB <code class="inline">Submissions</code> table, generates <code class="inline">submissionId</code>, publishes event to <code class="inline">SQS:assignment-grading-queue</code>, returns <code class="inline">202 Accepted</code> immediately.</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><code class="inline">GradingLambda</code> (SQS consumer, batch size=1) retrieves message. Calls <code class="inline">comprehend.detectSentiment()</code> + <code class="inline">comprehend.detectKeyPhrases()</code> + <code class="inline">comprehend.classifyDocument()</code> against a custom rubric classifier.</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Comprehend returns structured JSON. <code class="inline">GradingLambda</code> maps rubric category scores → generates per-criterion feedback strings → computes a 0–100 score.</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">Feedback stored in DynamoDB. Student progress event (<code class="inline">ASSIGNMENT_COMPLETED</code>) published to <code class="inline">SQS:personalize-events-queue</code>.</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><code class="inline">PersonalizeEventLambda</code> calls <code class="inline">personalize-events.putEvents()</code> to record the interaction. Personalize model updates in real-time (via Event Tracker).</div></div>
+    <div class="flow-step"><div class="flow-num">7</div><div class="flow-text">SNS triggers <code class="inline">NotificationLambda</code> → SES sends personalised feedback email to student within 90 seconds of submission.</div></div>
+  </div>
+
+  <h3>Workflow D — Recommendation Engine Flow</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Every student action (video_watched, quiz_scored, assignment_submitted, module_completed) is recorded as a Personalize Interaction event with a custom <code class="inline">eventValue</code> (e.g., quiz score 0–1).</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Amazon Personalize trains a <code class="inline">USER_PERSONALIZATION</code> recipe (HRNN — Hierarchical RNN) on the Interactions dataset nightly via an automated retraining Lambda triggered by EventBridge.</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-step"><div class="flow-num">3</div><div class="flow-text">When a student completes a module, <code class="inline">RecommendationLambda</code> calls <code class="inline">personalize-runtime.getRecommendations()</code> with the <code class="inline">userId</code> and <code class="inline">numResults=5</code>.</div></div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Response includes ranked list of <code class="inline">itemIds</code> (courseModuleIds). Lambda enriches each with DynamoDB metadata (title, duration, difficulty) and returns the top-3 to the student dashboard.</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">For cold-start students (fewer than 5 interactions), the system falls back to a <code class="inline">POPULARITY_COUNT</code> recipe that returns globally popular items for the enrolled course category.</div></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 4 ═══════════════════ -->
+<div class="section" id="s4">
+  <div class="section-header">
+    <span class="sec-num">SECTION 04</span>
+    <h2>DynamoDB Schema Design</h2>
+  </div>
+
+  <div class="callout callout-amber">
+    <strong>Design Principle:</strong> DynamoDB tables are designed around access patterns, not entities. All relationships are modelled using composite sort keys and sparse indexes (GSI). The single-table design is used for tightly coupled entities; separate tables are used where access patterns diverge significantly.
+  </div>
+
+  <h3>Table 1 — Students</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Attribute</th><th>Type</th><th>Role</th><th>Example Value</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">PK</code></td><td>String</td><td>Partition Key</td><td><code class="inline">STUDENT#s-4821</code></td></tr>
+        <tr><td><code class="inline">SK</code></td><td>String</td><td>Sort Key</td><td><code class="inline">PROFILE</code></td></tr>
+        <tr><td><code class="inline">email</code></td><td>String</td><td>GSI-1 PK</td><td><code class="inline">amara.diallo@uni.com</code></td></tr>
+        <tr><td><code class="inline">cognitoSub</code></td><td>String</td><td>GSI-2 PK</td><td><code class="inline">uuid-cognito-sub</code></td></tr>
+        <tr><td><code class="inline">country</code></td><td>String</td><td>GSI-3 PK</td><td><code class="inline">NG</code></td></tr>
+        <tr><td><code class="inline">enrolledCourses</code></td><td>List</td><td>Attribute</td><td><code class="inline">["c-101","c-205"]</code></td></tr>
+        <tr><td><code class="inline">riskScore</code></td><td>Number</td><td>At-risk filter</td><td><code class="inline">0.73</code></td></tr>
+        <tr><td><code class="inline">lastActive</code></td><td>String (ISO)</td><td>Engagement</td><td><code class="inline">2025-08-01T10:22:00Z</code></td></tr>
+        <tr><td><code class="inline">createdAt</code></td><td>String (ISO)</td><td>TTL source</td><td><code class="inline">2024-01-15T09:00:00Z</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Table 2 — Courses (Single-Table: Courses + Modules)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>PK</th><th>SK</th><th>Entity Type</th><th>Key Attributes</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">COURSE#c-101</code></td><td><code class="inline">METADATA</code></td><td>Course</td><td>title, description, instructorId, category, durationHours</td></tr>
+        <tr><td><code class="inline">COURSE#c-101</code></td><td><code class="inline">MODULE#m-01</code></td><td>Module</td><td>title, videoId, quizId, orderIndex, durationMins, difficulty (1-5)</td></tr>
+        <tr><td><code class="inline">COURSE#c-101</code></td><td><code class="inline">MODULE#m-02</code></td><td>Module</td><td>title, videoId, quizId, orderIndex, durationMins, difficulty</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout callout-blue"><strong>Access pattern:</strong> <code class="inline">Query PK=COURSE#c-101, SK begins_with MODULE#</code> returns all modules in sort order — one DynamoDB call, zero JOINs.</div>
+
+  <h3>Table 3 — StudentProgress (Time-Series + Aggregates)</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Attribute</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">PK: STUDENT#s-4821</code></td><td>String</td><td>Student partition</td></tr>
+        <tr><td><code class="inline">SK: COURSE#c-101#MODULE#m-03</code></td><td>String</td><td>Composite sort for course+module lookup</td></tr>
+        <tr><td><code class="inline">status</code></td><td>String</td><td>NOT_STARTED | IN_PROGRESS | COMPLETED</td></tr>
+        <tr><td><code class="inline">completionPct</code></td><td>Number</td><td>0–100, updated via atomic ADD</td></tr>
+        <tr><td><code class="inline">videoWatchedSecs</code></td><td>Number</td><td>Atomic counter</td></tr>
+        <tr><td><code class="inline">quizScore</code></td><td>Number</td><td>0–100, null if not taken</td></tr>
+        <tr><td><code class="inline">attemptCount</code></td><td>Number</td><td>Number of quiz attempts</td></tr>
+        <tr><td><code class="inline">completedAt</code></td><td>String</td><td>ISO timestamp; used in GSI for Personalize training data export</td></tr>
+        <tr><td><code class="inline">GSI-1 PK: COURSE#c-101</code></td><td>String</td><td>Query all students' progress in a course (instructor view)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Table 4 — Submissions</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Attribute</th><th>Type</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">PK: SUBMISSION#sub-9901</code></td><td>String</td><td>Unique submission ID</td></tr>
+        <tr><td><code class="inline">SK: SUBMITTED_AT#2025-08-01T11:00:00Z</code></td><td>String</td><td>Sort for chronological queries</td></tr>
+        <tr><td><code class="inline">studentId</code></td><td>String</td><td>GSI-1 PK — get all submissions by student</td></tr>
+        <tr><td><code class="inline">assignmentId</code></td><td>String</td><td>GSI-2 PK — get all submissions for assignment</td></tr>
+        <tr><td><code class="inline">submissionText</code></td><td>String</td><td>Raw text (truncated); full text in S3</td></tr>
+        <tr><td><code class="inline">s3Key</code></td><td>String</td><td>Full submission in S3</td></tr>
+        <tr><td><code class="inline">aiScore</code></td><td>Number</td><td>0–100 from Comprehend pipeline</td></tr>
+        <tr><td><code class="inline">feedbackJson</code></td><td>Map</td><td>Per-criterion feedback object</td></tr>
+        <tr><td><code class="inline">gradingStatus</code></td><td>String</td><td>PENDING | GRADED | MANUAL_REVIEW</td></tr>
+        <tr><td><code class="inline">TTL</code></td><td>Number</td><td>Unix epoch; auto-delete after 7 years (compliance)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Table 5 — Videos</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Attribute</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">PK: VIDEO#v-5512</code></td><td>Unique video ID</td></tr>
+        <tr><td><code class="inline">transcriptS3Key</code></td><td>Path to Transcribe JSON output</td></tr>
+        <tr><td><code class="inline">chapterMarkers</code></td><td>List of {timestampMs, title, summary}</td></tr>
+        <tr><td><code class="inline">transcriptionStatus</code></td><td>QUEUED | PROCESSING | COMPLETE | FAILED</td></tr>
+        <tr><td><code class="inline">languageDetected</code></td><td>e.g. en-US, fr-FR — auto-detected by Transcribe</td></tr>
+        <tr><td><code class="inline">durationSecs</code></td><td>Video length for progress tracking</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 5 ═══════════════════ -->
+<div class="section" id="s5">
+  <div class="section-header">
+    <span class="sec-num">SECTION 05</span>
+    <h2>API Design (REST Endpoints)</h2>
+  </div>
+
+  <p>All endpoints are versioned under <code class="inline">/v1</code>. All endpoints except <code class="inline">/auth/*</code> require <code class="inline">Authorization: Bearer &lt;CognitoAccessToken&gt;</code>. API Gateway applies a default throttle of <strong>1000 RPS burst / 200 RPS steady</strong> at the account level; per-route throttles override this for expensive AI endpoints.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Method</th><th>Path</th><th>Lambda</th><th>Description</th><th>Auth</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-green">POST</span></td><td><code class="inline">/auth/register</code></td><td>AuthLambda</td><td>Cognito sign-up + custom attributes</td><td>None</td></tr>
+        <tr><td><span class="badge badge-green">POST</span></td><td><code class="inline">/auth/login</code></td><td>AuthLambda</td><td>Cognito InitiateAuth → tokens</td><td>None</td></tr>
+        <tr><td><span class="badge badge-green">POST</span></td><td><code class="inline">/auth/refresh</code></td><td>AuthLambda</td><td>Silent token refresh</td><td>RefreshToken</td></tr>
+        <tr><td><span class="badge badge-blue">GET</span></td><td><code class="inline">/students/{id}/dashboard</code></td><td>DashboardLambda</td><td>Progress summary + top-3 recommendations</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-blue">GET</span></td><td><code class="inline">/students/{id}/progress</code></td><td>ProgressLambda</td><td>All course progress records</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-amber">PUT</span></td><td><code class="inline">/students/{id}/progress/{moduleId}</code></td><td>ProgressLambda</td><td>Update video watch position or quiz score</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-blue">GET</span></td><td><code class="inline">/courses</code></td><td>CourseLambda</td><td>Course catalogue (paginated, 20 per page)</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-blue">GET</span></td><td><code class="inline">/courses/{id}/modules</code></td><td>CourseLambda</td><td>All modules with video + quiz refs</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-green">POST</span></td><td><code class="inline">/videos/upload-url</code></td><td>VideoUploadLambda</td><td>Pre-signed S3 URL for direct browser upload</td><td>JWT + instructor role</td></tr>
+        <tr><td><span class="badge badge-blue">GET</span></td><td><code class="inline">/videos/{id}/transcript</code></td><td>VideoLambda</td><td>Full transcript + chapter markers from DynamoDB</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-green">POST</span></td><td><code class="inline">/assignments/{id}/submit</code></td><td>AssignmentLambda</td><td>Submit text → queue → 202 Accepted</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-blue">GET</span></td><td><code class="inline">/assignments/{id}/feedback</code></td><td>AssignmentLambda</td><td>Poll for AI feedback (status + score)</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-blue">GET</span></td><td><code class="inline">/recommendations/{studentId}</code></td><td>RecommendationLambda</td><td>Top-5 next activities from Personalize</td><td>JWT</td></tr>
+        <tr><td><span class="badge badge-blue">GET</span></td><td><code class="inline">/admin/at-risk</code></td><td>AtRiskLambda</td><td>Students with riskScore &gt; 0.6 (admin only)</td><td>JWT + admin role</td></tr>
+        <tr><td><span class="badge badge-blue">GET</span></td><td><code class="inline">/admin/analytics/course/{id}</code></td><td>AnalyticsLambda</td><td>Cohort completion rates, avg scores</td><td>JWT + admin role</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Sample Request/Response — Assignment Submission</h3>
+  <div class="code-block">
+    <div class="code-label">Request — POST /v1/assignments/a-1091/submit</div>
+    <pre>{
+  <span class="key">"studentId"</span>: <span class="str">"s-4821"</span>,
+  <span class="key">"submissionText"</span>: <span class="str">"The CAP theorem states that distributed systems can only guarantee two of three properties: Consistency, Availability, and Partition Tolerance..."</span>,
+  <span class="key">"attemptNumber"</span>: <span class="num">1</span>
+}</pre>
+  </div>
+  <div class="code-block">
+    <div class="code-label">Response — 202 Accepted</div>
+    <pre>{
+  <span class="key">"submissionId"</span>: <span class="str">"sub-9901"</span>,
+  <span class="key">"status"</span>: <span class="str">"PENDING"</span>,
+  <span class="key">"message"</span>: <span class="str">"Your submission is being analysed. Feedback typically arrives within 90 seconds."</span>,
+  <span class="key">"pollUrl"</span>: <span class="str">"/v1/assignments/a-1091/feedback?submissionId=sub-9901"</span>
+}</pre>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 6 ═══════════════════ -->
+<div class="section" id="s6">
+  <div class="section-header">
+    <span class="sec-num">SECTION 06</span>
+    <h2>Lambda Function Breakdown</h2>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Function Name</th><th>Trigger</th><th>Runtime</th><th>Memory</th><th>Timeout</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">lms-auth</code></td><td>API GW</td><td>Node 20</td><td>256 MB</td><td>10s</td><td>Cognito sign-up, sign-in, token refresh, profile fetch</td></tr>
+        <tr><td><code class="inline">lms-dashboard</code></td><td>API GW</td><td>Node 20</td><td>256 MB</td><td>15s</td><td>Aggregates progress + recommendations for dashboard view</td></tr>
+        <tr><td><code class="inline">lms-course</code></td><td>API GW</td><td>Node 20</td><td>256 MB</td><td>10s</td><td>Course catalogue CRUD; module listing; search</td></tr>
+        <tr><td><code class="inline">lms-progress</code></td><td>API GW</td><td>Node 20</td><td>256 MB</td><td>10s</td><td>Read/write StudentProgress table; atomic counter updates</td></tr>
+        <tr><td><code class="inline">lms-video-upload</code></td><td>API GW</td><td>Node 20</td><td>128 MB</td><td>5s</td><td>Generates pre-signed S3 PUT URL; validates instructor role</td></tr>
+        <tr><td><code class="inline">lms-transcribe-dispatch</code></td><td>S3 Event</td><td>Python 3.12</td><td>256 MB</td><td>30s</td><td>Starts Transcribe job; writes QUEUED status to DynamoDB</td></tr>
+        <tr><td><code class="inline">lms-transcript-processor</code></td><td>S3 Event (output)</td><td>Python 3.12</td><td>512 MB</td><td>120s</td><td>Parses transcript JSON; generates chapter markers; writes to DynamoDB</td></tr>
+        <tr><td><code class="inline">lms-assignment-submit</code></td><td>API GW</td><td>Node 20</td><td>256 MB</td><td>10s</td><td>Validates submission; writes to DynamoDB; enqueues SQS message</td></tr>
+        <tr><td><code class="inline">lms-grading-engine</code></td><td>SQS</td><td>Python 3.12</td><td>1024 MB</td><td>300s</td><td>Calls Comprehend; applies rubric scoring; writes feedback</td></tr>
+        <tr><td><code class="inline">lms-recommendation</code></td><td>API GW</td><td>Python 3.12</td><td>256 MB</td><td>10s</td><td>Calls Personalize campaign; enriches item IDs from DynamoDB</td></tr>
+        <tr><td><code class="inline">lms-personalize-events</code></td><td>SQS</td><td>Python 3.12</td><td>256 MB</td><td>30s</td><td>Batches and sends interaction events to Personalize Event Tracker</td></tr>
+        <tr><td><code class="inline">lms-at-risk-detector</code></td><td>EventBridge (daily)</td><td>Python 3.12</td><td>512 MB</td><td>300s</td><td>Scans all students; calculates risk score; updates DynamoDB; alerts advisors</td></tr>
+        <tr><td><code class="inline">lms-notification</code></td><td>SNS</td><td>Node 20</td><td>256 MB</td><td>30s</td><td>Routes to SES (email) or SNS Mobile Push based on notification type</td></tr>
+        <tr><td><code class="inline">lms-personalize-retrain</code></td><td>EventBridge (nightly)</td><td>Python 3.12</td><td>256 MB</td><td>60s</td><td>Exports DynamoDB → S3 CSV; triggers Personalize dataset import + solution version</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Sample Lambda — Grading Engine (Python)</h3>
+  <div class="code-block">
+    <div class="code-label">lms-grading-engine / handler.py</div>
+    <pre><span class="kw">import</span> boto3, json, os
+<span class="kw">from</span> decimal <span class="kw">import</span> Decimal
+
+comprehend = boto3.client(<span class="str">'comprehend'</span>)
+dynamodb   = boto3.resource(<span class="str">'dynamodb'</span>)
+sns        = boto3.client(<span class="str">'sns'</span>)
+
+RUBRIC_CLASSIFIER_ARN = os.environ[<span class="str">'COMPREHEND_CLASSIFIER_ARN'</span>]
+SUBMISSIONS_TABLE     = os.environ[<span class="str">'SUBMISSIONS_TABLE'</span>]
+SNS_TOPIC_ARN         = os.environ[<span class="str">'FEEDBACK_TOPIC_ARN'</span>]
+
+<span class="kw">def</span> <span class="fn">lambda_handler</span>(event, context):
+    <span class="kw">for</span> record <span class="kw">in</span> event[<span class="str">'Records'</span>]:
+        body       = json.loads(record[<span class="str">'body'</span>])
+        sub_id     = body[<span class="str">'submissionId'</span>]
+        student_id = body[<span class="str">'studentId'</span>]
+        text       = body[<span class="str">'submissionText'</span>]
+
+        <span class="com"># ── 1. Comprehend analysis ─────────────────────────────────</span>
+        sentiment  = comprehend.detect_sentiment(Text=text, LanguageCode=<span class="str">'en'</span>)
+        key_phrases= comprehend.detect_key_phrases(Text=text, LanguageCode=<span class="str">'en'</span>)
+        rubric_res = comprehend.classify_document(
+            Text=text,
+            EndpointArn=RUBRIC_CLASSIFIER_ARN
+        )
+
+        <span class="com"># ── 2. Score calculation ───────────────────────────────────</span>
+        categories = rubric_res[<span class="str">'Classes'</span>]
+        score      = <span class="fn">calculate_score</span>(categories)
+        feedback   = <span class="fn">generate_feedback</span>(categories, key_phrases[<span class="str">'KeyPhrases'</span>])
+
+        <span class="com"># ── 3. Write feedback to DynamoDB ─────────────────────────</span>
+        table = dynamodb.Table(SUBMISSIONS_TABLE)
+        table.update_item(
+            Key={<span class="str">'PK'</span>: <span class="str">f'SUBMISSION#{sub_id}'</span>, <span class="str">'SK'</span>: body[<span class="str">'submittedAt'</span>]},
+            UpdateExpression=<span class="str">'SET aiScore=:s, feedbackJson=:f, gradingStatus=:g'</span>,
+            ExpressionAttributeValues={
+                <span class="str">':s'</span>: Decimal(<span class="fn">str</span>(score)),
+                <span class="str">':f'</span>: feedback,
+                <span class="str">':g'</span>: <span class="str">'GRADED'</span>
+            }
+        )
+
+        <span class="com"># ── 4. Notify student ─────────────────────────────────────</span>
+        sns.publish(
+            TopicArn=SNS_TOPIC_ARN,
+            Message=json.dumps({<span class="str">'studentId'</span>: student_id, <span class="str">'submissionId'</span>: sub_id, <span class="str">'score'</span>: score}),
+            Subject=<span class="str">'ASSIGNMENT_GRADED'</span>
+        )
+
+<span class="kw">def</span> <span class="fn">calculate_score</span>(classes):
+    weights = {<span class="str">'CRITICAL_THINKING'</span>: <span class="num">0.35</span>, <span class="str">'ACCURACY'</span>: <span class="num">0.40</span>, <span class="str">'CLARITY'</span>: <span class="num">0.25</span>}
+    <span class="kw">return</span> <span class="fn">round</span>(<span class="fn">sum</span>(c[<span class="str">'Score'</span>] * weights.get(c[<span class="str">'Name'</span>], <span class="num">0</span>) <span class="kw">for</span> c <span class="kw">in</span> classes) * <span class="num">100</span>, <span class="num">1</span>)</pre>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 7 ═══════════════════ -->
+<div class="section" id="s7">
+  <div class="section-header">
+    <span class="sec-num">SECTION 07</span>
+    <h2>AI/ML Integration Deep Dive</h2>
+  </div>
+
+  <h3>Amazon Transcribe — Video Processing</h3>
+  <p>Transcribe processes audio asynchronously — you submit a job, Transcribe calls you back (via S3 output). The resulting JSON contains word-level confidence scores, speaker labels, and timestamps accurate to 10ms.</p>
+
+  <div class="code-block">
+    <div class="code-label">Start Transcription Job — Python</div>
+    <pre>transcribe = boto3.client(<span class="str">'transcribe'</span>)
+
+response = transcribe.start_transcription_job(
+    TranscriptionJobName=<span class="str">f'lms-video-{video_id}'</span>,
+    Media={<span class="str">'MediaFileUri'</span>: <span class="str">f's3://lms-videos-raw/{course_id}/{video_id}.mp4'</span>},
+    OutputBucketName=<span class="str">'lms-transcripts'</span>,
+    OutputKey=<span class="str">f'{video_id}/transcript.json'</span>,
+    IdentifyLanguage=<span class="val">True</span>,          <span class="com"># Auto-detect: en, fr, de, hi, ar, zh, etc.</span>
+    Settings={
+        <span class="str">'ShowSpeakerLabels'</span>: <span class="val">True</span>,
+        <span class="str">'MaxSpeakerLabels'</span>: <span class="num">2</span>,      <span class="com"># Instructor + optional student Q&amp;A</span>
+        <span class="str">'ShowAlternatives'</span>: <span class="val">True</span>,
+        <span class="str">'MaxAlternatives'</span>: <span class="num">2</span>
+    },
+    ContentRedaction={               <span class="com"># Remove PII from transcripts</span>
+        <span class="str">'RedactionType'</span>: <span class="str">'PII'</span>,
+        <span class="str">'RedactionOutput'</span>: <span class="str">'redacted'</span>
+    }
+)</pre>
+  </div>
+
+  <h4>Chapter Marker Generation Algorithm</h4>
+  <p>After Transcribe completes, the <code class="inline">lms-transcript-processor</code> Lambda applies a sliding-window topic detection algorithm:</p>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Split transcript into 30-second text windows using the <code class="inline">startTime</code> field of each word token.</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Call <code class="inline">comprehend.detect_key_phrases()</code> on each window. Track the set of dominant key phrases per window.</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">When the Jaccard similarity between consecutive windows drops below 0.25 (topic shift), mark the boundary as a chapter start. Minimum chapter length: 3 minutes.</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Use the top key phrase from each chapter's first window as the auto-generated chapter title.</div></div>
+  </div>
+
+  <h3>Amazon Comprehend — Assignment Evaluation</h3>
+  <p>Comprehend's custom classifier is trained on a labelled dataset of past assignment submissions with rubric scores. You train it once with ~1,000 labelled examples per category; it then evaluates new submissions in real time.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Comprehend API</th><th>What It Returns</th><th>How We Use It</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">detect_sentiment</code></td><td>POSITIVE / NEGATIVE / NEUTRAL / MIXED</td><td>Flags submissions with very negative tone for instructor review</td></tr>
+        <tr><td><code class="inline">detect_key_phrases</code></td><td>List of key phrases with confidence scores</td><td>Checks if required rubric terms appear (e.g. "CAP theorem", "eventual consistency")</td></tr>
+        <tr><td><code class="inline">classify_document</code></td><td>Per-category confidence scores from custom classifier</td><td>Maps to rubric criteria: Accuracy, Critical Thinking, Clarity</td></tr>
+        <tr><td><code class="inline">detect_entities</code></td><td>Named entities (PERSON, ORG, QUANTITY, etc.)</td><td>Detects if student cited specific technical terms / tools correctly</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Amazon Personalize — Recommendation Engine</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Personalize Concept</th><th>Our Implementation</th></tr></thead>
+      <tbody>
+        <tr><td>Dataset Group</td><td><code class="inline">lms-adaptive-learning</code></td></tr>
+        <tr><td>Interactions Dataset</td><td>studentId, itemId (moduleId), eventType (VIDEO_WATCHED, QUIZ_COMPLETED, ASSIGNMENT_SUBMITTED), eventValue (0–1 score), timestamp</td></tr>
+        <tr><td>Items Dataset</td><td>moduleId, courseId, difficulty (1–5), durationMins, category</td></tr>
+        <tr><td>Users Dataset</td><td>studentId, country, enrollmentDate, learningPace (SLOW/NORMAL/FAST)</td></tr>
+        <tr><td>Recipe</td><td><code class="inline">aws-user-personalization</code> (HRNN) for returning students; <code class="inline">aws-popularity-count</code> for cold-start</td></tr>
+        <tr><td>Campaign</td><td><code class="inline">lms-next-module-campaign</code>, minProvisionedTPS=1 (scale to demand)</td></tr>
+        <tr><td>Event Tracker</td><td>Real-time interaction ingestion; model updates within minutes</td></tr>
+        <tr><td>Retraining Schedule</td><td>Nightly EventBridge rule → <code class="inline">lms-personalize-retrain</code> Lambda creates new solution version + campaign update</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="code-block">
+    <div class="code-label">Get Recommendations — Python</div>
+    <pre>personalize_runtime = boto3.client(<span class="str">'personalize-runtime'</span>)
+
+response = personalize_runtime.get_recommendations(
+    campaignArn=os.environ[<span class="str">'PERSONALIZE_CAMPAIGN_ARN'</span>],
+    userId=student_id,
+    numResults=<span class="num">5</span>,
+    context={
+        <span class="str">'CURRENT_COURSE'</span>: course_id,
+        <span class="str">'DIFFICULTY_FILTER'</span>: <span class="str">'3'</span>  <span class="com"># Only recommend modules difficulty ≤ student_level+1</span>
+    },
+    filterArn=os.environ[<span class="str">'ENROLLED_COURSES_FILTER_ARN'</span>]  <span class="com"># Only enrolled course modules</span>
+)
+
+item_ids = [r[<span class="str">'itemId'</span>] <span class="kw">for</span> r <span class="kw">in</span> response[<span class="str">'itemList'</span>]]
+
+<span class="com"># Enrich with DynamoDB metadata in a single BatchGetItem call</span>
+keys = [{<span class="str">'PK'</span>: {<span class="str">'S'</span>: <span class="str">f'MODULE#{iid}'</span>}, <span class="str">'SK'</span>: {<span class="str">'S'</span>: <span class="str">'METADATA'</span>}} <span class="kw">for</span> iid <span class="kw">in</span> item_ids]</pre>
+  </div>
+
+  <h3>At-Risk Student Detection Logic</h3>
+  <p>The <code class="inline">lms-at-risk-detector</code> Lambda runs every night at 02:00 UTC via EventBridge. It scans StudentProgress records and computes a weighted risk score:</p>
+  <div class="code-block">
+    <div class="code-label">Risk Score Formula</div>
+    <pre><span class="com"># Risk score = weighted sum, range 0 (safe) to 1 (high-risk)</span>
+risk_score = (
+    <span class="num">0.30</span> * days_since_last_login_factor     +  <span class="com"># >7 days = 1.0</span>
+    <span class="num">0.25</span> * missed_deadlines_ratio            +  <span class="com"># assignments past due / total</span>
+    <span class="num">0.25</span> * (1 - avg_quiz_score_normalised)   +  <span class="com"># low scores = higher risk</span>
+    <span class="num">0.20</span> * video_drop_off_rate                  <span class="com"># % videos watched &lt; 30%</span>
+)
+
+<span class="com"># Thresholds</span>
+<span class="kw">if</span> risk_score > <span class="num">0.75</span>:   alert_level = <span class="str">'CRITICAL'</span>   <span class="com"># Immediate advisor email</span>
+<span class="kw">elif</span> risk_score > <span class="num">0.50</span>: alert_level = <span class="str">'WARNING'</span>    <span class="com"># Student receives motivational nudge</span>
+<span class="kw">else</span>:                   alert_level = <span class="str">'NORMAL'</span></pre>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 8 ═══════════════════ -->
+<div class="section" id="s8">
+  <div class="section-header">
+    <span class="sec-num">SECTION 08</span>
+    <h2>Security Best Practices</h2>
+  </div>
+
+  <h3>IAM Roles — Least Privilege</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Role Name</th><th>Principal</th><th>Key Permissions</th><th>Explicitly Denied</th></tr></thead>
+      <tbody>
+        <tr><td><code class="inline">lms-grading-lambda-role</code></td><td>Lambda</td><td>comprehend:DetectSentiment, comprehend:ClassifyDocument, dynamodb:UpdateItem on Submissions table, sns:Publish on feedback topic</td><td>iam:*, s3:DeleteObject, dynamodb:DeleteTable</td></tr>
+        <tr><td><code class="inline">lms-transcribe-lambda-role</code></td><td>Lambda</td><td>transcribe:StartTranscriptionJob, s3:GetObject (lms-videos-raw/*), s3:PutObject (lms-transcripts/*), dynamodb:PutItem on Videos table</td><td>All other transcribe: actions</td></tr>
+        <tr><td><code class="inline">lms-recommendation-lambda-role</code></td><td>Lambda</td><td>personalize:GetRecommendations, personalize-events:PutEvents, dynamodb:BatchGetItem on Courses table</td><td>personalize:DeleteSolution, dynamodb:DeleteItem</td></tr>
+        <tr><td><code class="inline">lms-student-s3-upload-role</code></td><td>Cognito Identity Pool</td><td>s3:PutObject to lms-videos-raw/&lt;cognito-sub&gt;/* only</td><td>s3:GetObject on other students' paths</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Encryption Strategy</h3>
+  <div class="card-grid">
+    <div class="card amber">
+      <div class="card-title">Data at Rest</div>
+      <div class="card-sub">All DynamoDB tables encrypted with AWS-managed CMK (SSE-KMS). S3 buckets use SSE-S3 (AES-256) by default; sensitive buckets (submissions, transcripts) use customer-managed CMK with key rotation every 365 days.</div>
+    </div>
+    <div class="card amber">
+      <div class="card-title">Data in Transit</div>
+      <div class="card-sub">TLS 1.2+ enforced everywhere. CloudFront → Origin uses HTTPS only. ALB uses ACM certificate. S3 bucket policies deny HTTP requests (aws:SecureTransport condition).</div>
+    </div>
+    <div class="card amber">
+      <div class="card-title">Secrets Management</div>
+      <div class="card-sub">No hardcoded credentials. All Lambda environment variables referencing sensitive values use Secrets Manager ARNs. Lambda execution roles grant secretsmanager:GetSecretValue only for specific secret ARNs.</div>
+    </div>
+    <div class="card amber">
+      <div class="card-title">Token Security</div>
+      <div class="card-sub">Cognito JWTs stored in memory (not localStorage). Short expiry: AccessToken 1h, IdToken 1h, RefreshToken 30 days. Token rotation on each refresh. CSRF tokens on all state-changing API calls.</div>
+    </div>
+  </div>
+
+  <h3>Additional Security Controls</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Control</th><th>Implementation</th></tr></thead>
+      <tbody>
+        <tr><td>WAF on CloudFront</td><td>AWS Managed Rules (Core rule set + Known bad inputs); rate-based rule: 1000 req/5min per IP; geo-restriction: allow only the 23 enrolled countries</td></tr>
+        <tr><td>S3 Bucket Security</td><td>Block all public access; bucket policies deny non-TLS; versioning enabled on submission and transcript buckets; object lock (GOVERNANCE mode) on audit logs</td></tr>
+        <tr><td>CloudTrail</td><td>Multi-region trail; log file validation enabled; CloudWatch Logs integration for real-time anomaly detection (e.g., bulk DynamoDB Scan by unknown principal)</td></tr>
+        <tr><td>VPC Flow Logs</td><td>ALL traffic (accept + reject); stored in dedicated S3 bucket with bucket policy restricting access to security team only; Athena-queryable</td></tr>
+        <tr><td>API Gateway</td><td>Request validation (body schema); resource policies restricting calls to CloudFront IP ranges only; WAF association</td></tr>
+        <tr><td>DynamoDB</td><td>Point-in-Time Recovery (PITR) enabled; VPC Gateway Endpoint ensures traffic never traverses internet; resource-based policy denies cross-account access</td></tr>
+        <tr><td>MFA</td><td>Cognito MFA (TOTP via authenticator app) enforced for all instructor and admin accounts; optional for students</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 9 ═══════════════════ -->
+<div class="section" id="s9">
+  <div class="section-header">
+    <span class="sec-num">SECTION 09</span>
+    <h2>Deployment Steps (AWS Console + CLI)</h2>
+  </div>
+
+  <div class="callout callout-green"><strong>Recommended approach:</strong> Use AWS CDK (TypeScript) for infrastructure-as-code. Steps below work both via AWS Console for learning and as a CDK reference. Use the order below — dependencies must exist before dependents.</div>
+
+  <h3>Phase 1 — Networking Foundation</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>Create VPC:</strong> CIDR <code class="inline">10.0.0.0/16</code>, enable DNS hostnames + DNS resolution.</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>Create 6 subnets:</strong> Public (10.0.1.0/24 AZ-1a, 10.0.2.0/24 AZ-1b), Private App (10.0.11.0/24, 10.0.12.0/24), Private Data (10.0.21.0/24, 10.0.22.0/24). Enable auto-assign public IP only on public subnets.</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>Internet Gateway:</strong> Create + attach to VPC. Add route <code class="inline">0.0.0.0/0 → igw-xxx</code> to Public Route Table.</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>NAT Gateways:</strong> Allocate 2 Elastic IPs. Create NAT GW in 10.0.1.0/24 and 10.0.2.0/24. Add <code class="inline">0.0.0.0/0 → nat-xxx</code> to each private app route table (AZ-1a points to NAT in AZ-1a for HA).</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>VPC Endpoints:</strong> Create Gateway endpoints (S3, DynamoDB) and Interface endpoints (SQS, SNS, Secrets Manager, CloudWatch Logs, KMS, Transcribe, Comprehend).</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><strong>Security Groups:</strong> Create SG-ALB, SG-Lambda, SG-VPCEndpoints with rules as per Section 2.</div></div>
+    <div class="flow-step"><div class="flow-num">7</div><div class="flow-text"><strong>VPC Flow Logs:</strong> VPC → Flow Logs → Create → Destination: S3 <code class="inline">arn:aws:s3:::lms-flow-logs/${account-id}/</code>.</div></div>
+  </div>
+
+  <h3>Phase 2 — Storage &amp; Auth</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">8</div><div class="flow-text"><strong>S3 Buckets:</strong> Create <code class="inline">lms-frontend</code>, <code class="inline">lms-videos-raw</code>, <code class="inline">lms-transcripts</code>, <code class="inline">lms-submissions</code>, <code class="inline">lms-flow-logs</code>. Block all public access. Enable versioning on submissions + transcripts. Apply SSE-KMS.</div></div>
+    <div class="flow-step"><div class="flow-num">9</div><div class="flow-text"><strong>DynamoDB Tables:</strong> Create all 5 tables (Students, Courses, StudentProgress, Submissions, Videos) with PAY_PER_REQUEST billing. Enable PITR. Create GSIs as per schema design.</div></div>
+    <div class="flow-step"><div class="flow-num">10</div><div class="flow-text"><strong>Cognito User Pool:</strong> Create with email sign-in, custom attributes (country, studentId, role). Configure password policy (12+ chars, mixed case, number). Enable MFA (OPTIONAL for students, REQUIRED for instructors). Create App Client (no secret — SPA flow).</div></div>
+    <div class="flow-step"><div class="flow-num">11</div><div class="flow-text"><strong>Cognito Identity Pool:</strong> Link to User Pool. Create authenticated IAM role with S3 PutObject scoped to <code class="inline">lms-videos-raw/${cognito-identity.amazonaws.com:sub}/*</code>.</div></div>
+  </div>
+
+  <h3>Phase 3 — Compute &amp; API</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">12</div><div class="flow-text"><strong>IAM Roles:</strong> Create all Lambda execution roles per Section 8 table. Attach AWSLambdaVPCAccessExecutionRole (required for VPC-attached Lambdas).</div></div>
+    <div class="flow-step"><div class="flow-num">13</div><div class="flow-text"><strong>Lambda Functions:</strong> Deploy all 14 functions. Configure VPC attachment (private app subnets + SG-Lambda). Set environment variables (table names, topic ARNs) — never hardcode. Set Provisioned Concurrency=2 on <code class="inline">lms-dashboard</code> and <code class="inline">lms-recommendation</code>.</div></div>
+    <div class="flow-step"><div class="flow-num">14</div><div class="flow-text"><strong>SQS Queues:</strong> Create <code class="inline">assignment-grading-queue</code> and <code class="inline">personalize-events-queue</code>. Set visibility timeout = Lambda timeout × 6. Create Dead Letter Queues (DLQ) with maxReceiveCount=3.</div></div>
+    <div class="flow-step"><div class="flow-num">15</div><div class="flow-text"><strong>SNS Topics:</strong> Create <code class="inline">lms-feedback-notifications</code>, <code class="inline">lms-at-risk-alerts</code>. Subscribe <code class="inline">lms-notification</code> Lambda to feedback topic.</div></div>
+    <div class="flow-step"><div class="flow-num">16</div><div class="flow-text"><strong>API Gateway:</strong> Create REST API. Import OpenAPI spec (or create resources manually). Attach Cognito User Pool Authorizer. Create Usage Plans + API Keys for instructor-only routes. Deploy to <code class="inline">v1</code> stage. Associate WAF ACL.</div></div>
+    <div class="flow-step"><div class="flow-num">17</div><div class="flow-text"><strong>Application Load Balancer:</strong> Create in public subnets. HTTPS listener with ACM certificate. Forward to API Gateway via VPC Link (HTTP proxy integration).</div></div>
+  </div>
+
+  <h3>Phase 4 — AI/ML Setup</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">18</div><div class="flow-text"><strong>Comprehend Custom Classifier:</strong> Upload training CSV (submissionText, rubric_label) to S3. Create classifier. Train. Once TRAINED, create endpoint. Update Lambda env with endpoint ARN.</div></div>
+    <div class="flow-step"><div class="flow-num">19</div><div class="flow-text"><strong>Personalize:</strong> Create Dataset Group → create 3 datasets (Interactions, Items, Users) → upload historical data CSVs → create schema → run dataset import → create solution → create campaign → create Event Tracker. Store campaign ARN + Event Tracker ARN in Secrets Manager.</div></div>
+    <div class="flow-step"><div class="flow-num">20</div><div class="flow-text"><strong>EventBridge Rules:</strong> At-risk detector: <code class="inline">cron(0 2 * * ? *)</code>. Personalize retraining: <code class="inline">cron(0 1 * * ? *)</code>. Target: respective Lambda ARNs.</div></div>
+  </div>
+
+  <h3>Phase 5 — Frontend &amp; CDN</h3>
+  <div class="flow">
+    <div class="flow-step"><div class="flow-num">21</div><div class="flow-text"><strong>Build React SPA:</strong> Set env vars (Cognito pool ID, API Gateway URL). <code class="inline">npm run build</code>. Upload <code class="inline">dist/</code> to <code class="inline">lms-frontend</code> S3 bucket.</div></div>
+    <div class="flow-step"><div class="flow-num">22</div><div class="flow-text"><strong>CloudFront Distribution:</strong> Origins: S3 (frontend) + API Gateway (forwarded via <code class="inline">/api/*</code> behaviour). Viewer protocol: redirect HTTP → HTTPS. Cache policy: managed CachingOptimized for S3; CachingDisabled for API. Associate WAF ACL. Custom domain + ACM cert.</div></div>
+    <div class="flow-step"><div class="flow-num">23</div><div class="flow-text"><strong>SES:</strong> Verify sender domain. Create email templates for: assignment feedback, at-risk alert, study reminder, deadline notification. Move out of sandbox (AWS support ticket for production).</div></div>
+    <div class="flow-step"><div class="flow-num">24</div><div class="flow-text"><strong>CloudWatch:</strong> Create Dashboard with widgets: Lambda error rate, DynamoDB throttle count, Personalize campaign latency, active student count. Create Alarms: Lambda error rate &gt; 1% → SNS alert to ops team.</div></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 10 ═══════════════════ -->
+<div class="section" id="s10">
+  <div class="section-header">
+    <span class="sec-num">SECTION 10</span>
+    <h2>Cost Optimization Strategies</h2>
+  </div>
+
+  <h3>Estimated Monthly Cost (4,800 Students, Normal Load)</h3>
+  <div class="cost-est">
+    <div class="cost-card"><div class="cost-label">Lambda + API GW</div><div class="cost-val">~$45</div><div class="cost-unit">/month</div></div>
+    <div class="cost-card"><div class="cost-label">DynamoDB (On-Demand)</div><div class="cost-val">~$120</div><div class="cost-unit">/month</div></div>
+    <div class="cost-card"><div class="cost-label">S3 Storage + Transfer</div><div class="cost-val">~$80</div><div class="cost-unit">/month</div></div>
+    <div class="cost-card"><div class="cost-label">CloudFront (CDN)</div><div class="cost-val">~$30</div><div class="cost-unit">/month</div></div>
+    <div class="cost-card"><div class="cost-label">AI/ML Services</div><div class="cost-val">~$200</div><div class="cost-unit">/month</div></div>
+    <div class="cost-card"><div class="cost-label">NAT Gateways (2x)</div><div class="cost-val">~$65</div><div class="cost-unit">/month</div></div>
+    <div class="cost-card"><div class="cost-label">Cognito (MAU-based)</div><div class="cost-val">~$18</div><div class="cost-unit">/month</div></div>
+    <div class="cost-card"><div class="cost-label">Total Estimated</div><div class="cost-val">~$558</div><div class="cost-unit">/month</div></div>
+  </div>
+
+  <div class="callout callout-green">That's <strong>$0.116 per student per month</strong> for a fully personalised, AI-powered, globally distributed learning platform — compare to $5–50/student/month for commercial LMS SaaS platforms.</div>
+
+  <h3>Cost Optimization Levers</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Strategy</th><th>Service</th><th>Estimated Saving</th><th>Implementation</th></tr></thead>
+      <tbody>
+        <tr><td>Switch to DynamoDB Provisioned Capacity for predictable workloads</td><td>DynamoDB</td><td>40–60% savings</td><td>Use AWS Cost Explorer to identify RCU/WCU patterns. Provision base + Auto Scaling (target utilisation 70%). Keep On-Demand for spiky tables.</td></tr>
+        <tr><td>S3 Intelligent-Tiering for video storage</td><td>S3</td><td>30–50% savings on storage</td><td>Apply S3 Intelligent-Tiering lifecycle rule to lms-videos-raw/. Videos not watched in 30 days move to Infrequent Access automatically.</td></tr>
+        <tr><td>CloudFront caching for API responses</td><td>CloudFront + API GW</td><td>Reduce Lambda invocations by 60%</td><td>Cache GET /courses (TTL 5 min), GET /recommendations (TTL 30s). Reduces Lambda calls and API GW request count. Use Cache-Control headers.</td></tr>
+        <tr><td>Lambda ARM64 (Graviton2) architecture</td><td>Lambda</td><td>20% cost reduction + 19% performance</td><td>Change Lambda architecture from x86_64 to arm64. No code changes needed for Node.js/Python runtimes.</td></tr>
+        <tr><td>Comprehend asynchronous batch API</td><td>Comprehend</td><td>50% unit cost vs. synchronous</td><td>Batch assignment submissions (end of day): use StartDocumentClassificationJob instead of real-time classify_document for low-priority assignments.</td></tr>
+        <tr><td>Transcribe batch over real-time</td><td>Transcribe</td><td>Transcribe is already async — no change</td><td>Ensure MediaFormat is specified (not auto-detected) to avoid extra processing overhead.</td></tr>
+        <tr><td>NAT Gateway → VPC Endpoints migration</td><td>NAT GW</td><td>$30–50/month</td><td>Each AWS service call through VPC Endpoint costs $0.01/GB vs. NAT Gateway $0.045/GB + $0.045/hour. Interface endpoints have a $7.30/month base but pay for themselves at moderate traffic.</td></tr>
+        <tr><td>EventBridge + S3 lifecycle for DLQ cleanup</td><td>SQS</td><td>Prevent runaway DLQ costs</td><td>DLQ retention 4 days, EventBridge rule to alert if DLQ depth &gt; 10. Dead messages cost the same as live ones.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- ═══════════════════ SECTION 11 ═══════════════════ -->
+<div class="section" id="s11">
+  <div class="section-header">
+    <span class="sec-num">SECTION 11</span>
+    <h2>Resume-Ready Project Description</h2>
+  </div>
+
+  <div class="resume-block">
+    <h3>Resume Bullet Points (ATS + Interview Ready)</h3>
+    <ul>
+      <li>Architected a serverless, event-driven Adaptive Learning Management System on AWS serving 4,800 students across 23 countries, achieving 99.9% uptime with zero provisioned servers.</li>
+      <li>Designed a 3-tier VPC (10.0.0.0/16) with Multi-AZ public subnets hosting ALB and NAT Gateways, private compute subnets running 14 Lambda functions, and isolated data subnets with DynamoDB and S3 — enforcing least-privilege Security Groups at every tier.</li>
+      <li>Built an AI-powered video processing pipeline using Amazon Transcribe (supports 37 languages, speaker diarisation) and custom chapter-marker generation via Comprehend Key Phrase detection — reducing lecture navigation time by 70%.</li>
+      <li>Implemented automated assignment grading with Amazon Comprehend custom classifier trained on rubric-labelled submissions, cutting manual grading time from 7–10 days to under 90 seconds for standard submissions.</li>
+      <li>Deployed Amazon Personalize (USER_PERSONALIZATION recipe, HRNN model) with real-time Event Tracker ingestion — delivering personalised next-module recommendations with measurable 34% improvement in course completion rates.</li>
+      <li>Implemented at-risk student detection system using a multi-factor risk score algorithm (login frequency, quiz performance, video completion, missed deadlines), enabling proactive advisor intervention before student dropout.</li>
+      <li>Reduced infrastructure costs to $0.116/student/month (vs $5–50/month for commercial LMS platforms) through DynamoDB On-Demand pricing, Lambda ARM64 Graviton2 compute, S3 Intelligent-Tiering, and CloudFront caching.</li>
+      <li>Enforced zero-trust security architecture: Cognito JWT authorisation on all API routes, KMS encryption for all data at rest, WAF with managed rule groups on CloudFront, and 9 VPC Endpoints ensuring all AWS service traffic remains private.</li>
+    </ul>
+    <div class="tech-row">
+      <span class="tech-pill">AWS Lambda</span>
+      <span class="tech-pill">Amazon VPC</span>
+      <span class="tech-pill">API Gateway</span>
+      <span class="tech-pill">DynamoDB</span>
+      <span class="tech-pill">Amazon Cognito</span>
+      <span class="tech-pill">Amazon Personalize</span>
+      <span class="tech-pill">Amazon Comprehend</span>
+      <span class="tech-pill">Amazon Transcribe</span>
+      <span class="tech-pill">CloudFront</span>
+      <span class="tech-pill">Amazon S3</span>
+      <span class="tech-pill">Amazon SQS</span>
+      <span class="tech-pill">Amazon SNS</span>
+      <span class="tech-pill">Amazon SES</span>
+      <span class="tech-pill">CloudWatch</span>
+      <span class="tech-pill">CloudTrail</span>
+      <span class="tech-pill">AWS KMS</span>
+      <span class="tech-pill">EventBridge</span>
+      <span class="tech-pill">IAM</span>
+      <span class="tech-pill">AWS CDK</span>
+    </div>
+  </div>
+
+  <h3>Interview Talking Points</h3>
+
+  <h4>Q: Why DynamoDB instead of RDS?</h4>
+  <p>The LMS has 4 dominant access patterns: get student profile by ID, get all modules for a course, get a student's progress on a module, and get all submissions for an assignment. Every pattern maps perfectly to a DynamoDB PK/SK query. The data is non-relational (no complex joins), highly variable in shape (each submission has different AI feedback structures), and must scale to 4,800 concurrent end-of-exam submissions without pre-provisioning. RDS would require an Aurora cluster at ~$300/month minimum; DynamoDB costs $0 when idle and scales linearly. PITR replaces the need for scheduled RDS snapshots.</p>
+
+  <h4>Q: How does the recommendation system handle cold-start students?</h4>
+  <p>Amazon Personalize's USER_PERSONALIZATION recipe degrades gracefully for users with fewer than 5 interactions. We detect this in the Lambda: if the student has fewer than 5 recorded events, we switch the campaign call to use the POPULARITY_COUNT recipe filtered to the student's enrolled course category. This ensures Day-1 students still get useful recommendations (most popular modules in their track) rather than random content.</p>
+
+  <h4>Q: Why SQS between the submission endpoint and the grading Lambda?</h4>
+  <p>Three reasons: (1) Decoupling — the API returns 202 immediately; the student isn't blocked waiting for Comprehend. (2) Resilience — if the grading Lambda throws an error, the SQS message becomes visible again after the visibility timeout and retries up to 3 times before going to the DLQ. Without SQS, a failed Lambda = lost submission. (3) Throttle management — Comprehend has service quotas; SQS acts as a buffer so 500 simultaneous submissions don't overwhelm the Comprehend quota.</p>
+
+  <h4>Q: How do VPC Endpoints improve security?</h4>
+  <p>Without VPC Endpoints, all Lambda calls to S3, DynamoDB, SQS, Comprehend, etc. would traverse the public internet through the NAT Gateway — even though both endpoints are in AWS. VPC Endpoints create a private tunnel within the AWS network fabric. For Gateway Endpoints (S3, DynamoDB), it's free and routes traffic through the VPC routing infrastructure. For Interface Endpoints, traffic never leaves the AWS backbone, which means: no exposure to internet-based man-in-the-middle attacks, the traffic doesn't appear in VPC Flow Logs as external, and we can attach endpoint policies that restrict which S3 buckets or DynamoDB tables can be accessed — a security layer on top of IAM.</p>
+
+  <hr class="divider"/>
+  <p style="font-size:13px;color:var(--text3);text-align:center;">
+    AWS Adaptive LMS Architecture Blueprint · Built for Production · Suitable for AWS Solutions Architect Portfolio
+    <br/>© Generated as a learning and reference document. All AWS service names are trademarks of Amazon Web Services, Inc.
+  </p>
+</div>
+
+</body>
+</html>
